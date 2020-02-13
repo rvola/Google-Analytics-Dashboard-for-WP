@@ -1,8 +1,8 @@
 <?php
 /**
- * Author: Alin Marcu
- * Author URI: https://deconf.com
- * Copyright 2013 Alin Marcu
+ * Author: ExactMetrics team
+ * Author URI: https://exactmetrics.com
+ * Copyright 2018 ExactMetrics team
  * License: GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -28,8 +28,12 @@ if ( ! class_exists( 'GADWP_Backend_Setup' ) ) {
 			add_action( 'network_admin_menu', array( $this, 'network_menu' ) );
 			// Settings link
 			add_filter( "plugin_action_links_" . plugin_basename( GADWP_DIR . 'gadwp.php' ), array( $this, 'settings_link' ) );
-			// Updated admin notice
-			add_action( 'admin_notices', array( $this, 'admin_notice' ) );
+			// AM Notices
+			add_filter( "am_notifications_display", array( $this, 'notice_optout' ), 10, 1 );
+			// Beta testing menu item.
+			add_action( 'admin_menu', array( $this, 'add_external_link_admin_submenu' ), 9999 );
+			// Beta testing menu item for network.
+			add_action( 'network_admin_menu', array( $this, 'add_external_link_network_admin_submenu' ), 9999 );
 		}
 
 		/**
@@ -48,6 +52,16 @@ if ( ! class_exists( 'GADWP_Backend_Setup' ) ) {
 			}
 		}
 
+		public function notice_optout( $super_admin ) {
+			if ( ( isset( $this->gadwp->config->options['hide_am_notices'] ) && $this->gadwp->config->options['hide_am_notices'] ) ||
+				( isset( $this->gadwp->config->options['network_hide_am_notices'] ) && $this->gadwp->config->options['network_hide_am_notices'] )
+			   )
+			{
+				return false;
+			}
+			return $super_admin;
+		}
+
 		/**
 		 * Add Network Menu
 		 */
@@ -59,6 +73,32 @@ if ( ! class_exists( 'GADWP_Backend_Setup' ) ) {
 				add_submenu_page( 'gadwp_settings', __( "General Settings", 'google-analytics-dashboard-for-wp' ), __( "General Settings", 'google-analytics-dashboard-for-wp' ), 'manage_network', 'gadwp_settings', array( 'GADWP_Settings', 'general_settings_network' ) );
 				add_submenu_page( 'gadwp_settings', __( "Errors & Debug", 'google-analytics-dashboard-for-wp' ), __( "Errors & Debug", 'google-analytics-dashboard-for-wp' ), 'manage_network', 'gadwp_errors_debugging', array( 'GADWP_Settings', 'errors_debugging' ) );
 			}
+		}
+
+		public function add_external_link_admin_submenu() {
+
+			if ( current_user_can( 'manage_options' ) ) {
+				add_submenu_page( 'gadwp_settings', __( "Early Access Program", 'google-analytics-dashboard-for-wp' ), __( "Early Access Program", 'google-analytics-dashboard-for-wp' ), 'manage_options', 'https://exactmetrics.com/early-adopters-program/' );
+				add_action( 'admin_footer', array( $this, 'early_adopters_target_blank' ) );
+			}
+		}
+
+		public function add_external_link_network_admin_submenu() {
+
+			if ( current_user_can( 'manage_network' ) ) {
+				add_submenu_page( 'gadwp_settings', __( "Early Access Program", 'google-analytics-dashboard-for-wp' ), __( "Early Access Program", 'google-analytics-dashboard-for-wp' ), 'manage_options', 'https://exactmetrics.com/early-adopters-program/' );
+				add_action( 'admin_footer', array( $this, 'early_adopters_target_blank' ) );
+			}
+		}
+
+		public function early_adopters_target_blank() {
+			?>
+			<script type="text/javascript">
+				if ( 'undefined' !== typeof jQuery ) {
+					jQuery('a[href*="https://exactmetrics.com/early-adopters-program"]').attr( 'target', '_blank' );
+				}
+			</script>
+			<?php
 		}
 
 		/**
@@ -353,26 +393,6 @@ if ( ! class_exists( 'GADWP_Backend_Setup' ) ) {
 			$settings_link = '<a href="' . esc_url( get_admin_url( null, 'admin.php?page=gadwp_settings' ) ) . '">' . __( "Settings", 'google-analytics-dashboard-for-wp' ) . '</a>';
 			array_unshift( $links, $settings_link );
 			return $links;
-		}
-
-		/**
-		 *  Add an admin notice after a manual or atuomatic update
-		 */
-		function admin_notice() {
-			$currentScreen = get_current_screen();
-
-			if ( ! current_user_can( 'manage_options' ) || strpos( $currentScreen->base, '_gadwp_' ) === false ) {
-				return;
-			}
-
-			if ( get_option( 'gadwp_got_updated' ) ) :
-				?>
-<div id="gadwp-notice" class="notice is-dismissible">
-	<p><?php echo sprintf( __('Google Analytics Dashboard for WP has been updated to version %s.', 'google-analytics-dashboard-for-wp' ), GADWP_CURRENT_VERSION).' '.sprintf( __('For details, check out %1$s.', 'google-analytics-dashboard-for-wp' ), sprintf(' <a href="https://deconf.com/google-analytics-dashboard-wordpress/?utm_source=gadwp_notice&utm_medium=link&utm_content=release_notice&utm_campaign=gadwp">%s</a>', __('the plugin documentation', 'google-analytics-dashboard-for-wp') ) ); ?></p>
-</div>
-
-			<?php
-			endif;
 		}
 	}
 }
